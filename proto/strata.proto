@@ -1,0 +1,135 @@
+syntax = "proto3";
+
+package strata;
+
+option java_package = "com.strata.proto";
+option java_outer_classname = "StrataProto";
+
+// ──────────────────────────────────────────────
+// Core data types
+// ──────────────────────────────────────────────
+
+message BoardPosition {
+  int32 node_id = 1;
+  int32 layer = 2;
+  int32 row = 3;
+  int32 column = 4;
+}
+
+message PieceInfo {
+  BoardPosition position = 1;
+  string owner = 2;          // WHITE or BLACK
+  string piece_type = 3;     // ADEPT, ELEMENTAL, GUARDIAN
+  string stage = 4;          // Transformation stage name
+  int32 stage_index = 5;
+}
+
+message MoveInfo {
+  int32 from_node = 1;
+  int32 to_node = 2;
+  string moved_piece = 3;
+  string mover = 4;
+  bool is_capture = 5;
+  string captured_piece = 6;
+}
+
+message GameStateMsg {
+  string active_player = 1;
+  int32 ply_count = 2;
+  int32 white_piece_count = 3;
+  int32 black_piece_count = 4;
+  repeated PieceInfo pieces = 5;
+  repeated int32 legal_move_from = 6;
+  repeated int32 legal_move_to = 7;
+}
+
+// ──────────────────────────────────────────────
+// Neural network evaluation
+// ──────────────────────────────────────────────
+
+message EvalRequest {
+  GameStateMsg state = 1;
+}
+
+message EvalResponse {
+  float value = 1;                    // position value [-1, 1]
+  repeated float move_policy = 2;     // probability for each legal move
+}
+
+// ──────────────────────────────────────────────
+// Self-play training
+// ──────────────────────────────────────────────
+
+message TrainingExample {
+  GameStateMsg state = 1;
+  repeated float policy_target = 2;   // MCTS visit distribution
+  float value_target = 3;             // game outcome from this position
+}
+
+message TrainingBatch {
+  repeated TrainingExample examples = 1;
+  int32 game_id = 2;
+}
+
+message TrainResponse {
+  bool success = 1;
+  float loss = 2;
+  int32 examples_processed = 3;
+}
+
+// ──────────────────────────────────────────────
+// LLM Coaching
+// ──────────────────────────────────────────────
+
+message CoachRequest {
+  string request_type = 1;            // ANALYZE, SUGGEST, TEACH
+  GameStateMsg state = 2;
+  MoveInfo last_move = 3;
+  string player_question = 4;
+}
+
+message CoachResponse {
+  string commentary = 1;
+  string suggestion = 2;
+  string teaching_tip = 3;
+  float confidence = 4;
+}
+
+// ──────────────────────────────────────────────
+// Service definitions
+// ──────────────────────────────────────────────
+
+service StrataEvalService {
+  // Single position evaluation
+  rpc Evaluate (EvalRequest) returns (EvalResponse);
+
+  // Batch evaluation for MCTS
+  rpc EvaluateBatch (stream EvalRequest) returns (stream EvalResponse);
+}
+
+service StrataTrainingService {
+  // Submit self-play training data
+  rpc SubmitTrainingData (TrainingBatch) returns (TrainResponse);
+
+  // Trigger a training step
+  rpc TrainStep (TrainStepRequest) returns (TrainResponse);
+}
+
+message TrainStepRequest {
+  int32 batch_size = 1;
+  float learning_rate = 2;
+}
+
+service StrataCoachService {
+  rpc GetCoaching (CoachRequest) returns (CoachResponse);
+}
+
+service StrataHealthService {
+  rpc Ping (PingRequest) returns (PingResponse);
+}
+
+message PingRequest {}
+message PingResponse {
+  string status = 1;
+  string model_version = 2;
+}

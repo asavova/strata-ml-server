@@ -1,0 +1,25 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Model checkpoints
+models/*.pt
+models/*.onnx
+
+# Training data
+data/*.bin
+data/*.npy
+data/*.json
+
+# Logs
+logs/*.log
+
+# IDE
+.idea/
+.vscode/
+*.iml

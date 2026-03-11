@@ -1,0 +1,27 @@
+[project]
+name = "strata-ml-server"
+version = "1.0.0"
+description = "PyTorch ML server for the Strata 3D board-game engine"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+dependencies = [
+    "torch>=2.2.0",
+    "numpy>=1.26.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.3.0",
+    "pyyaml>=6.0.1",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

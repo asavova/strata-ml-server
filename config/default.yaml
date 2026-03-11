@@ -1,0 +1,36 @@
+server:
+  host: "0.0.0.0"
+  port: 9000
+
+model:
+  state_size: 1008          # 126 nodes * 8 channels
+  policy_size: 15876         # 126 * 126 possible moves
+  hidden_size: 512
+  num_residual_blocks: 6
+  dropout: 0.1
+
+training:
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  batch_size: 256
+  max_replay_buffer: 200000
+  min_buffer_for_training: 128
+  checkpoint_interval: 50    # save every N training steps
+  lr_schedule:
+    step_milestones: [1000, 5000, 10000]
+    gamma: 0.5
+
+paths:
+  model_dir: "models"
+  data_dir: "data"
+  log_dir: "logs"
+  latest_model: "models/latest.pt"
+  best_model: "models/best.pt"
+
+coach:
+  # Set to null to use rule-based coaching only
+  # Set to a model name to use LLM (e.g., "gpt-4o-mini")
+  llm_model: "gpt-4o-mini"
+  # Your API key — set via STRATA_LLM_API_KEY env var, never hardcode
+  llm_api_key_env: "STRATA_LLM_API_KEY"
+  llm_base_url: "https://api.openai.com/v1"
