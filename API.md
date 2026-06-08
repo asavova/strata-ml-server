@@ -117,6 +117,15 @@ Returns a strategic direction for the active player.
 
 Answers a player question using deterministic rule-based coaching by default.
 
+Piece payload contract:
+
+- `nodeId` must be between 0 and 125.
+- `layer` must be between 0 and 6.
+- `row` must be between 0 and 2.
+- `col` must be between 0 and 5.
+- When `nodeId`, `layer`, `row`, and `col` are all supplied, `nodeId` must equal
+  `layer * 18 + row * 6 + col`.
+
 The optional LLM integration is disabled in `config/default.yaml`. When enabled
 with a model name and `STRATA_LLM_API_KEY`, the LLM is a replaceable commentary
 provider; rule-based coaching remains the fallback.

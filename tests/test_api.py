@@ -120,6 +120,44 @@ async def test_coach_analyze(client):
 
 
 @pytest.mark.asyncio
+async def test_coach_rejects_invalid_piece_coordinates(client):
+    payload = {
+        "requestType": "ANALYZE",
+        "activePlayer": "WHITE",
+        "pieces": [
+            {
+                "nodeId": 0,
+                "layer": 7,
+                "row": 0,
+                "col": 0,
+                "owner": "WHITE",
+            }
+        ],
+    }
+    response = await client.post("/coach/analyze", json=payload)
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_coach_rejects_inconsistent_node_coordinates(client):
+    payload = {
+        "requestType": "ANALYZE",
+        "activePlayer": "WHITE",
+        "pieces": [
+            {
+                "nodeId": 5,
+                "layer": 0,
+                "row": 0,
+                "col": 0,
+                "owner": "WHITE",
+            }
+        ],
+    }
+    response = await client.post("/coach/analyze", json=payload)
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_evaluate_rejects_wrong_state_size(client):
     payload = {
         "state": [0.0] * 1007,

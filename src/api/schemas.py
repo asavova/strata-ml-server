@@ -10,6 +10,11 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 STATE_SIZE = 1008
 POLICY_SIZE = 15876
+TOTAL_NODES = 126
+NODES_PER_LAYER = 18
+LAYERS = 7
+ROWS = 3
+COLUMNS = 6
 
 
 def _ensure_length(values: list, expected: int, field_name: str) -> list:
@@ -128,9 +133,9 @@ class TrainStatusResponse(BaseModel):
 
 
 class CoordSchema(BaseModel):
-    layer: int = 0
-    row: int = 0
-    col: int = 0
+    layer: int = Field(default=0, ge=0, lt=LAYERS)
+    row: int = Field(default=0, ge=0, lt=ROWS)
+    col: int = Field(default=0, ge=0, lt=COLUMNS)
 
 
 class LastMoveSchema(BaseModel):
@@ -145,13 +150,22 @@ class LastMoveSchema(BaseModel):
 
 
 class PieceSchema(BaseModel):
-    nodeId: int = 0
-    layer: int = 0
-    row: int = 0
-    col: int = 0
+    nodeId: int = Field(default=0, ge=0, lt=TOTAL_NODES)
+    layer: int = Field(default=0, ge=0, lt=LAYERS)
+    row: int = Field(default=0, ge=0, lt=ROWS)
+    col: int = Field(default=0, ge=0, lt=COLUMNS)
     owner: str = "WHITE"
     type: str = "ADEPT"
     stage: str = "CALCINATION"
+
+    @model_validator(mode="after")
+    def validate_node_coordinates(self):
+        supplied = self.model_fields_set
+        if {"nodeId", "layer", "row", "col"}.issubset(supplied):
+            expected = self.layer * NODES_PER_LAYER + self.row * COLUMNS + self.col
+            if self.nodeId != expected:
+                raise ValueError("nodeId must match layer, row, and col")
+        return self
 
     class Config:
         extra = "allow"
