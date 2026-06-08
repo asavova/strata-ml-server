@@ -1,59 +1,78 @@
 # Strata ML Server
 
-PyTorch neural network server for the Strata 3D board-game engine.
+PyTorch neural-network and coaching server for the Strata 3D board-game engine.
 
-## Architecture
-
-```
-Java Engine (strata-engine)
-│
-│ HTTP / gRPC on localhost:9000
-▼
-Python ML Server (this project)
-├── Neural network (policy + value heads)
-├── Self-play training pipeline
-├── Replay buffer
-└── LLM coaching integration
-```
+The project is a backend service for deterministic game workflows: position
+evaluation, self-play replay buffering, training, checkpointing, and rule-based
+strategic coaching. Optional LLM commentary can be enabled, but the default
+runtime works without an external AI provider.
 
 ## Quick Start
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate          # Windows
-# source .venv/bin/activate     # Mac/Linux
-
-pip install -r requirements.txt
-python -m src.server
+.venv\Scripts\activate
+python -m pip install -e ".[dev]"
+python -m src
 ```
 
-Server starts on http://localhost:9000.
+Server starts on `http://localhost:9000`.
 
-## Endpoints
+## Docker
+
+```bash
+docker build -t strata-ml-server .
+docker run --rm -p 9000:9000 strata-ml-server
+docker run --rm strata-ml-server python -m pytest -q
+```
+
+## Main Endpoints
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/health` | GET | Server status + model info |
-| `/evaluate` | POST | Evaluate a board position |
-| `/evaluate/batch` | POST | Batch position evaluation |
+| `/health` | GET | Server status and model metadata |
+| `/evaluate` | POST | Evaluate one board position |
+| `/evaluate/batch` | POST | Evaluate multiple positions |
 | `/train/submit` | POST | Submit self-play training data |
-| `/train/step` | POST | Trigger a training step |
-| `/train/status` | GET | Training pipeline status |
-| `/coach/analyze` | POST | Position analysis commentary |
-| `/coach/suggest` | POST | Move suggestion |
-| `/coach/teach` | POST | Strategic teaching |
+| `/train/step` | POST | Trigger one training step |
+| `/train/status` | GET | Training and replay-buffer status |
+| `/coach/analyze` | POST | Analyze a recent move |
+| `/coach/suggest` | POST | Suggest strategic direction |
+| `/coach/teach` | POST | Answer a strategy question |
+
+See [API.md](API.md) for request and validation details.
+
+## Architecture
+
+```text
+Java Strata Engine
+        |
+        | REST JSON on localhost:9000
+        v
+Python ML Server
+  - FastAPI route layer
+  - fixed-shape schema validation
+  - policy/value neural network
+  - replay buffer and trainer
+  - deterministic rule-based coaching
+  - optional LLM commentary fallback
+```
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for component details and current gaps.
 
 ## Training Loop
 
-1. Java engine runs self-play games
-2. Training examples are POSTed to `/train/submit`
-3. Server accumulates in replay buffer
-4. `/train/step` runs a gradient update
-5. Updated model is used for next evaluation cycle
+1. The Java engine runs self-play games.
+2. Training examples are posted to `/train/submit`.
+3. The server stores examples in a bounded replay buffer.
+4. `/train/step` samples a mini-batch and runs a gradient update.
+5. Checkpoints are written to `models/latest.pt` and `models/best.pt`.
 
----
+## Configuration
 
-## `config/default.yaml`
+Defaults live in `config/default.yaml`.
+
+Important values:
 
 ```yaml
 server:
@@ -61,81 +80,34 @@ server:
   port: 9000
 
 model:
-  state_size: 1008          # 126 nodes * 8 channels
-  policy_size: 15876         # 126 * 126 possible moves
-  hidden_size: 512
-  num_residual_blocks: 6
-  dropout: 0.1
+  state_size: 1008
+  policy_size: 15876
 
 training:
-  learning_rate: 0.001
-  weight_decay: 0.0001
   batch_size: 256
-  max_replay_buffer: 200000
   min_buffer_for_training: 128
-  checkpoint_interval: 50    # save every N training steps
-  lr_schedule:
-    step_milestones: [1000, 5000, 10000]
-    gamma: 0.5
-
-paths:
-  model_dir: "models"
-  data_dir: "data"
-  log_dir: "logs"
-  latest_model: "models/latest.pt"
-  best_model: "models/best.pt"
+  checkpoint_interval: 50
 
 coach:
-  # Set to null to use rule-based coaching only
-  # Set to a model name to use LLM (e.g., "gpt-4o-mini")
   llm_model: null
-  # Your API key — set via STRATA_LLM_API_KEY env var, never hardcode
   llm_api_key_env: "STRATA_LLM_API_KEY"
-  llm_base_url: "https://api.openai.com/v1"
 ```
 
-## How to run
+With `llm_model: null`, coaching uses deterministic rule-based responses. To
+enable optional LLM commentary, set a model name and provide
+`STRATA_LLM_API_KEY` in the environment.
+
+## Tests
 
 ```bash
-# Setup
-cd strata-ml-server
-python -m venv .venv
-.venv\Scripts\activate              # Windows
-pip install -r requirements.txt
-
-# Run the server
-python -m src
-
-# Run tests
-pip install pytest pytest-asyncio
-pytest tests/ -v
-
-# Java engine connects automatically to http://localhost:9000
+python -m pytest -q
 ```
 
-## LLM coaching — how to enable
+The test suite covers network shape behavior, legal-mask handling, evaluator
+batching, replay-buffer/trainer behavior, API validation, and deterministic
+coaching rules.
 
-Set an environment variable with your API key and update `config/default.yaml`:
+## Future Task Planning
 
-```bash
-# Windows
-set STRATA_LLM_API_KEY=your-key-here
-
-# Linux/Mac
-export STRATA_LLM_API_KEY=your-key-here
-```
-
-Without the key, the coach runs in **rule-based mode** — still functional, just less conversational.
-
-## Connection summary
-
-| Java class | Python endpoint | Purpose |
-|---|---|---|
-| `NeuralNetClient.connect()` | `GET /health` | Startup handshake |
-| `NeuralNetClient.evaluate()` | `POST /evaluate` | Position evaluation |
-| `NeuralNetClient.submitTrainingData()` | `POST /train/submit` | Self-play data |
-| `CoachClient.analyze()` | `POST /coach/analyze` | Post-move commentary |
-| `CoachClient.suggest()` | `POST /coach/suggest` | Move suggestion |
-| `CoachClient.teach()` | `POST /coach/teach` | Strategic Q&A |
-
-Both repos share the same protocol via `strata.proto` and the JSON schemas. The Java engine drives the game and generates training data. The Python server trains the neural network and provides coaching.
+See [TASK_OPPORTUNITIES.md](TASK_OPPORTUNITIES.md) for ranked future
+SWE-bench-style task candidates.

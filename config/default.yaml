@@ -30,7 +30,7 @@ paths:
 coach:
   # Set to null to use rule-based coaching only
   # Set to a model name to use LLM (e.g., "gpt-4o-mini")
-  llm_model: "gpt-4o-mini"
-  # Your API key — set via STRATA_LLM_API_KEY env var, never hardcode
+  llm_model: null
+  # Your API key - set via STRATA_LLM_API_KEY env var, never hardcode
   llm_api_key_env: "STRATA_LLM_API_KEY"
   llm_base_url: "https://api.openai.com/v1"
