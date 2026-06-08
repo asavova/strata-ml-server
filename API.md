@@ -93,7 +93,9 @@ Runs one trainer step against the current replay buffer. Optional request fields
 ```
 
 Both optional fields must be positive when provided. The current trainer uses
-configured training values for the actual step.
+configured training values when these fields are omitted. When provided,
+`batch_size` controls the sample size for that step and `learning_rate` is used
+only for that optimizer step.
 
 `GET /train/status`
 

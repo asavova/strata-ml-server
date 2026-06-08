@@ -41,7 +41,7 @@ class FakeReplayBuffer:
 
 
 class FakeTrainer:
-    def train_step(self, replay_buffer):
+    def train_step(self, replay_buffer, batch_size=None, learning_rate=None):
         return {"success": False, "reason": "Not enough data", "loss": 0.0}
 
     def get_status(self):

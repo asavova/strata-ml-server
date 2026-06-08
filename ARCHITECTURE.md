@@ -75,7 +75,5 @@ docker run --rm strata-ml-server python -m pytest -q
 
 - Replay buffer persistence is in-memory only.
 - gRPC service definitions are present, but only REST routes are implemented.
-- `TrainStepRequest` accepts override fields that are validated but not yet
-  applied by the trainer.
 - Dependency versions are lower-bounded rather than fully locked.
 - Test execution requires installing dev dependencies.

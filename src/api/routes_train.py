@@ -43,7 +43,12 @@ async def submit_training_data(batch: TrainingBatchRequest):
 @router.post("/step", response_model=TrainResponse)
 async def train_step(request: TrainStepRequest = None):
     """Trigger one training step."""
-    result = _trainer.train_step(_replay_buffer)
+    request = request or TrainStepRequest()
+    result = _trainer.train_step(
+        _replay_buffer,
+        batch_size=request.batch_size,
+        learning_rate=request.learning_rate,
+    )
     return TrainResponse(
         success=result.get("success", False),
         loss=result.get("loss", 0.0),

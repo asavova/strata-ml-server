@@ -57,7 +57,12 @@ class Trainer:
             f"weight_decay={config.weight_decay}"
         )
 
-    def train_step(self, replay_buffer: ReplayBuffer) -> dict:
+    def train_step(
+        self,
+        replay_buffer: ReplayBuffer,
+        batch_size: int | None = None,
+        learning_rate: float | None = None,
+    ) -> dict:
         """
         Run one training step.
 
@@ -73,7 +78,8 @@ class Trainer:
         self.network.train()
 
         # Sample mini-batch
-        batch = replay_buffer.sample(self.config.batch_size)
+        effective_batch_size = batch_size or self.config.batch_size
+        batch = replay_buffer.sample(effective_batch_size)
         states, target_policies, target_values = examples_to_tensors(batch, self.device)
 
         # Forward pass
@@ -98,7 +104,19 @@ class Trainer:
         # Gradient clipping for stability
         torch.nn.utils.clip_grad_norm_(self.network.parameters(), max_norm=1.0)
 
-        self.optimizer.step()
+        original_lrs = [group["lr"] for group in self.optimizer.param_groups]
+        effective_lr = learning_rate or original_lrs[0]
+        if learning_rate is not None:
+            for group in self.optimizer.param_groups:
+                group["lr"] = learning_rate
+
+        try:
+            self.optimizer.step()
+        finally:
+            if learning_rate is not None:
+                for group, original_lr in zip(self.optimizer.param_groups, original_lrs):
+                    group["lr"] = original_lr
+
         self.scheduler.step()
 
         self.step_count += 1
@@ -123,7 +141,9 @@ class Trainer:
             "policy_loss": policy_loss.item(),
             "value_loss": value_loss.item(),
             "step": self.step_count,
-            "lr": self.scheduler.get_last_lr()[0],
+            "lr": effective_lr,
+            "scheduled_lr": self.scheduler.get_last_lr()[0],
+            "batch_size": len(batch),
             "buffer_size": replay_buffer.size(),
         }
 

@@ -58,3 +58,31 @@ def test_training_step(tmp_path):
     result = trainer.train_step(buf)
     assert result["success"] is True
     assert result["loss"] > 0
+
+
+def test_training_step_uses_one_step_overrides(tmp_path):
+    net = StrataNetwork(state_size=1008, hidden_size=64, num_residual_blocks=1)
+    device = torch.device("cpu")
+
+    train_config = TrainingConfig(
+        learning_rate=0.001,
+        batch_size=16,
+        min_buffer_for_training=10,
+        checkpoint_interval=999,
+    )
+    paths_config = PathsConfig(
+        latest_model=str(tmp_path / "latest.pt"),
+        best_model=str(tmp_path / "best.pt"),
+    )
+
+    trainer = Trainer(net, device, train_config, paths_config)
+    buf = ReplayBuffer(max_size=1000)
+    for _ in range(20):
+        buf.add(_make_example())
+
+    result = trainer.train_step(buf, batch_size=4, learning_rate=0.005)
+
+    assert result["success"] is True
+    assert result["batch_size"] == 4
+    assert result["lr"] == 0.005
+    assert trainer.optimizer.param_groups[0]["lr"] == train_config.learning_rate
