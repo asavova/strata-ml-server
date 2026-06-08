@@ -1,5 +1,5 @@
 """
-Coach engine — provides natural-language teaching commentary.
+Coach engine - provides natural-language teaching commentary.
 
 Two modes:
 1. Rule-based: uses knowledge_base patterns (always available)
@@ -8,7 +8,7 @@ Two modes:
 
 import logging
 import os
-import random
+import hashlib
 from typing import Optional
 
 from . import knowledge_base as kb
@@ -82,7 +82,15 @@ class CoachEngine:
         return {
             "commentary": f"Position at ply {ply_count}. Material: W={white_count}, B={black_count}.",
             "suggestion": suggestion,
-            "teachingTip": random.choice(kb.STRATEGIC_PRINCIPLES),
+            "teachingTip": self._select_tip(
+                kb.STRATEGIC_PRINCIPLES,
+                "suggest",
+                active_player,
+                ply_count,
+                white_count,
+                black_count,
+                len(pieces),
+            ),
             "confidence": 0.70,
         }
 
@@ -104,13 +112,13 @@ class CoachEngine:
             active_player, ply_count, white_count, black_count, pieces, question
         )
 
-    # ── Rule-based methods ────────────────────────────────
+    # Rule-based methods
 
     def _rule_analyze(
         self, active_player, ply_count, white_count, black_count, pieces, last_move
     ) -> dict:
         parts = [f"Turn {ply_count}. Active: {active_player}."]
-        parts.append(f"Material — White: {white_count}, Black: {black_count}.")
+        parts.append(f"Material - White: {white_count}, Black: {black_count}.")
 
         if last_move:
             if last_move.get("isCapture"):
@@ -119,24 +127,42 @@ class CoachEngine:
                     f"{last_move.get('capturedPiece')}. "
                     f"The piece has reached {last_move.get('newStage', 'next')} stage."
                 )
-                parts.append("Captures accelerate transformation — a hidden advantage.")
+                parts.append("Captures accelerate transformation - a hidden advantage.")
             else:
                 parts.append("A quiet positional move. Building for the future.")
 
         center_white = sum(1 for p in pieces if p.get("layer") == 3 and p.get("owner") == "WHITE")
         center_black = sum(1 for p in pieces if p.get("layer") == 3 and p.get("owner") == "BLACK")
         if center_white > 0 or center_black > 0:
-            parts.append(f"Center control — White: {center_white}, Black: {center_black}.")
+            parts.append(f"Center control - White: {center_white}, Black: {center_black}.")
 
-        tip = random.choice(kb.STRATEGIC_PRINCIPLES)
+        tip_source = kb.STRATEGIC_PRINCIPLES
         if ply_count < 10:
-            tip = random.choice(kb.OPENING_TIPS)
+            tip_source = kb.OPENING_TIPS
+        tip = self._select_tip(
+            tip_source,
+            "analyze",
+            active_player,
+            ply_count,
+            white_count,
+            black_count,
+            last_move or {},
+            pieces,
+        )
+        confidence = self._confidence(
+            "analyze",
+            active_player,
+            ply_count,
+            white_count,
+            black_count,
+            last_move or {},
+        )
 
         return {
             "commentary": " ".join(parts),
             "suggestion": "",
             "teachingTip": tip,
-            "confidence": round(random.uniform(0.65, 0.90), 2),
+            "confidence": confidence,
         }
 
     def _rule_teach(
@@ -152,7 +178,7 @@ class CoachEngine:
             )
         elif "transform" in q or "stage" in q:
             commentary = (
-                "Each piece advances through 9 transformation stages — one per move. "
+                "Each piece advances through 9 transformation stages - one per move. "
                 "Reaching PHILOSOPHERS_STONE is powerful but makes the piece a high-value target. "
                 "Balance advancement with protection."
             )
@@ -173,11 +199,19 @@ class CoachEngine:
         return {
             "commentary": commentary,
             "suggestion": "",
-            "teachingTip": random.choice(kb.STRATEGIC_PRINCIPLES),
+            "teachingTip": self._select_tip(
+                kb.STRATEGIC_PRINCIPLES,
+                "teach",
+                active_player,
+                ply_count,
+                white_count,
+                black_count,
+                question or "",
+            ),
             "confidence": 0.80,
         }
 
-    # ── LLM-powered methods ───────────────────────────────
+    # LLM-powered methods
 
     def _llm_analyze(
         self, active_player, ply_count, white_count, black_count, pieces, last_move
@@ -288,7 +322,7 @@ class CoachEngine:
             return {
                 "commentary": "The coach is thinking...",
                 "suggestion": "",
-                "teachingTip": random.choice(kb.STRATEGIC_PRINCIPLES),
+                "teachingTip": self._select_tip(kb.STRATEGIC_PRINCIPLES, "llm-fallback"),
                 "confidence": 0.5,
             }
 
@@ -298,3 +332,19 @@ class CoachEngine:
             "teachingTip": "",
             "confidence": 0.85,
         }
+
+    def _select_tip(self, tips: list[str], *parts) -> str:
+        """Select a stable tip for a request without relying on process randomness."""
+        if not tips:
+            return ""
+        return tips[self._stable_index(len(tips), *parts)]
+
+    def _confidence(self, *parts) -> float:
+        """Return a stable confidence in the rule-based analysis range."""
+        offset = self._stable_index(26, *parts)
+        return round(0.65 + offset / 100, 2)
+
+    def _stable_index(self, size: int, *parts) -> int:
+        key = repr(parts).encode("utf-8")
+        digest = hashlib.sha256(key).hexdigest()
+        return int(digest[:8], 16) % size
