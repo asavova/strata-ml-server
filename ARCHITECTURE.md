@@ -31,7 +31,7 @@ workflows.
    evaluator.
 3. The evaluator runs the network and returns a scalar value plus move policy.
 4. Self-play examples are posted to `/train/submit` and retained in a bounded
-   replay buffer.
+   replay buffer. The buffer writes a JSON snapshot after submissions.
 5. `/train/step` samples from the replay buffer, updates model weights, advances
    the scheduler, and checkpoints at configured intervals.
 6. Coaching endpoints inspect position metadata and return deterministic
@@ -49,8 +49,8 @@ workflows.
 
 ## Persistence And Lifecycle
 
-- Replay buffer entries live in memory and are capped by
-  `training.max_replay_buffer`.
+- Replay buffer entries live in memory, are capped by
+  `training.max_replay_buffer`, and are saved to `paths.replay_buffer_snapshot`.
 - Model checkpoints are written to `paths.latest_model`.
 - The best observed checkpoint is written to `paths.best_model` when checkpoint
   loss improves.
@@ -73,7 +73,6 @@ docker run --rm strata-ml-server python -m pytest -q
 
 ## Current Gaps
 
-- Replay buffer persistence is in-memory only.
 - gRPC service definitions are present, but only REST routes are implemented.
 - Dependency versions are lower-bounded rather than fully locked.
 - Test execution requires installing dev dependencies.

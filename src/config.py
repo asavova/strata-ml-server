@@ -45,6 +45,7 @@ class PathsConfig(BaseModel):
     log_dir: str = "logs"
     latest_model: str = "models/latest.pt"
     best_model: str = "models/best.pt"
+    replay_buffer_snapshot: str = "data/replay_buffer_snapshot.json"
 
 
 class CoachConfig(BaseModel):

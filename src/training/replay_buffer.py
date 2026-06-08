@@ -3,9 +3,11 @@ Fixed-size replay buffer for training examples from self-play.
 """
 
 import logging
+import json
 import random
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -52,6 +54,44 @@ class ReplayBuffer:
         """Sample a random mini-batch."""
         actual_size = min(batch_size, len(self.buffer))
         return random.sample(list(self.buffer), actual_size)
+
+    def save_snapshot(self, path: str) -> None:
+        """Persist the current buffer contents to a JSON snapshot."""
+        snapshot_path = Path(path)
+        snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "max_size": self.max_size,
+            "total_added": self.total_added,
+            "examples": [asdict(example) for example in self.buffer],
+        }
+        snapshot_path.write_text(json.dumps(payload), encoding="utf-8")
+        logger.info(
+            f"ReplayBuffer snapshot saved: {len(self.buffer):,} examples to {path}"
+        )
+
+    def load_snapshot(self, path: str) -> bool:
+        """Load a JSON snapshot if it exists, preserving the current max size."""
+        snapshot_path = Path(path)
+        if not snapshot_path.exists():
+            logger.info(f"No replay buffer snapshot found at {path}")
+            return False
+
+        payload = json.loads(snapshot_path.read_text(encoding="utf-8"))
+        examples = payload.get("examples", [])
+        self.buffer.clear()
+        for raw in examples[-self.max_size:]:
+            self.buffer.append(
+                TrainingExample(
+                    state=raw["state"],
+                    policy=raw["policy"],
+                    value=raw["value"],
+                )
+            )
+        self.total_added = max(int(payload.get("total_added", 0)), len(self.buffer))
+        logger.info(
+            f"ReplayBuffer snapshot loaded: {len(self.buffer):,} examples from {path}"
+        )
+        return True
 
     def size(self) -> int:
         return len(self.buffer)

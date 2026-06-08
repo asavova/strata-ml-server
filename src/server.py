@@ -56,6 +56,7 @@ async def lifespan(app: FastAPI):
 
     # Initialize components
     replay_buffer = ReplayBuffer(max_size=config.training.max_replay_buffer)
+    replay_buffer.load_snapshot(config.paths.replay_buffer_snapshot)
     trainer = Trainer(network, device, config.training, config.paths)
     evaluator = Evaluator(network, device)
     coach_engine = CoachEngine(
@@ -66,7 +67,11 @@ async def lifespan(app: FastAPI):
 
     # Inject dependencies into route modules
     routes_eval.set_evaluator(evaluator)
-    routes_train.set_dependencies(trainer, replay_buffer)
+    routes_train.set_dependencies(
+        trainer,
+        replay_buffer,
+        replay_snapshot_path=config.paths.replay_buffer_snapshot,
+    )
     routes_coach.set_coach(coach_engine)
 
     logger.info("All components initialized. Server is ready.")
@@ -76,6 +81,7 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Saving final model checkpoint...")
     network.save(config.paths.latest_model)
+    replay_buffer.save_snapshot(config.paths.replay_buffer_snapshot)
     logger.info("Server shut down cleanly.")
 
 

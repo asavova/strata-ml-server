@@ -26,6 +26,7 @@ paths:
   log_dir: "logs"
   latest_model: "models/latest.pt"
   best_model: "models/best.pt"
+  replay_buffer_snapshot: "data/replay_buffer_snapshot.json"
 
 coach:
   # Set to null to use rule-based coaching only

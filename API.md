@@ -58,7 +58,8 @@ Contract:
 
 `POST /train/submit`
 
-Adds self-play examples to the replay buffer.
+Adds self-play examples to the replay buffer and writes the configured replay
+snapshot.
 
 Request:
 

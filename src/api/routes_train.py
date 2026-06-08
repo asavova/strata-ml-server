@@ -15,12 +15,14 @@ router = APIRouter(prefix="/train", tags=["training"])
 # Dependency injection — set by server.py at startup
 _trainer = None
 _replay_buffer = None
+_replay_snapshot_path = None
 
 
-def set_dependencies(trainer, replay_buffer):
-    global _trainer, _replay_buffer
+def set_dependencies(trainer, replay_buffer, replay_snapshot_path=None):
+    global _trainer, _replay_buffer, _replay_snapshot_path
     _trainer = trainer
     _replay_buffer = replay_buffer
+    _replay_snapshot_path = replay_snapshot_path
 
 
 @router.post("/submit", response_model=TrainResponse)
@@ -31,6 +33,8 @@ async def submit_training_data(batch: TrainingBatchRequest):
         for ex in batch.examples
     ]
     _replay_buffer.add_batch(examples)
+    if _replay_snapshot_path:
+        _replay_buffer.save_snapshot(_replay_snapshot_path)
 
     return TrainResponse(
         success=True,

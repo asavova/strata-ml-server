@@ -30,6 +30,24 @@ def test_replay_buffer():
     assert buf.size() == 100  # capped at max_size
 
 
+def test_replay_buffer_snapshot_round_trip(tmp_path):
+    path = tmp_path / "replay_snapshot.json"
+    source = ReplayBuffer(max_size=3)
+    source.add(TrainingExample(state=[1.0], policy=[1.0, 0.0], value=1.0))
+    source.add(TrainingExample(state=[2.0], policy=[0.0, 1.0], value=-1.0))
+    source.save_snapshot(str(path))
+
+    restored = ReplayBuffer(max_size=1)
+    loaded = restored.load_snapshot(str(path))
+
+    assert loaded is True
+    assert restored.size() == 1
+    assert restored.total_added == 2
+    assert restored.buffer[0].state == [2.0]
+    assert restored.buffer[0].policy == [0.0, 1.0]
+    assert restored.buffer[0].value == -1.0
+
+
 def test_training_step(tmp_path):
     net = StrataNetwork(state_size=1008, hidden_size=64, num_residual_blocks=1)
     device = torch.device("cpu")

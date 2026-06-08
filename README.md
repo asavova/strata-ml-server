@@ -64,7 +64,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for component details and current gaps.
 
 1. The Java engine runs self-play games.
 2. Training examples are posted to `/train/submit`.
-3. The server stores examples in a bounded replay buffer.
+3. The server stores examples in a bounded replay buffer and writes a snapshot.
 4. `/train/step` samples a mini-batch and runs a gradient update.
 5. Checkpoints are written to `models/latest.pt` and `models/best.pt`.
 
@@ -87,6 +87,9 @@ training:
   batch_size: 256
   min_buffer_for_training: 128
   checkpoint_interval: 50
+
+paths:
+  replay_buffer_snapshot: "data/replay_buffer_snapshot.json"
 
 coach:
   llm_model: null
