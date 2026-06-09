@@ -54,3 +54,18 @@ def test_rule_suggest_uses_center_presence():
     )
 
     assert "Strong center presence" in response["suggestion"]
+
+
+def test_coach_stats_track_request_types():
+    coach = CoachEngine(llm_model=None)
+
+    coach.analyze("WHITE", 1, 27, 27, [], None)
+    coach.suggest("WHITE", 2, 27, 27, [])
+    coach.teach("BLACK", 3, 26, 27, [], "center")
+
+    stats = coach.stats()
+    assert stats["total_requests"] == 3
+    assert stats["requests_by_type"]["analyze"] == 1
+    assert stats["requests_by_type"]["suggest"] == 1
+    assert stats["requests_by_type"]["teach"] == 1
+    assert stats["llm_available"] is False

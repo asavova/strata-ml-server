@@ -56,6 +56,7 @@ workflows.
   loss improves.
 - Checkpoint metadata is exposed through `/health` and `/train/status` when
   available.
+- Runtime evaluation and coaching counters are exposed through `/health`.
 - Runtime directories are created during FastAPI lifespan startup.
 
 ## Docker And Evaluation

@@ -34,6 +34,11 @@ class CoachEngine:
         self.llm_base_url = llm_base_url
         self.llm_api_key = os.environ.get(llm_api_key_env) if llm_model else None
         self.llm_available = self.llm_model is not None and self.llm_api_key is not None
+        self.request_counts = {
+            "analyze": 0,
+            "suggest": 0,
+            "teach": 0,
+        }
 
         if self.llm_available:
             logger.info(f"LLM coaching enabled: model={llm_model}")
@@ -50,6 +55,7 @@ class CoachEngine:
         last_move: Optional[dict] = None,
     ) -> dict:
         """Analyze the position after a move."""
+        self.request_counts["analyze"] += 1
         if self.llm_available:
             return self._llm_analyze(
                 active_player, ply_count, white_count, black_count, pieces, last_move
@@ -67,6 +73,7 @@ class CoachEngine:
         pieces: list[dict],
     ) -> dict:
         """Suggest a strategic direction."""
+        self.request_counts["suggest"] += 1
         center_presence = [
             p for p in pieces
             if p.get("layer") == 3 and p.get("owner") == active_player
@@ -104,6 +111,7 @@ class CoachEngine:
         question: Optional[str] = None,
     ) -> dict:
         """Respond to a teaching request or question."""
+        self.request_counts["teach"] += 1
         if self.llm_available and question:
             return self._llm_teach(
                 active_player, ply_count, white_count, black_count, pieces, question
@@ -348,3 +356,10 @@ class CoachEngine:
         key = repr(parts).encode("utf-8")
         digest = hashlib.sha256(key).hexdigest()
         return int(digest[:8], 16) % size
+
+    def stats(self) -> dict:
+        return {
+            "total_requests": sum(self.request_counts.values()),
+            "requests_by_type": dict(self.request_counts),
+            "llm_available": self.llm_available,
+        }

@@ -122,6 +122,8 @@ async def health():
         "device": device,
         "model_version": "1.0",
         "model_metadata": metadata,
+        "evaluation_stats": routes_eval.get_stats(),
+        "coach_stats": routes_coach.get_stats(),
     }
 
 

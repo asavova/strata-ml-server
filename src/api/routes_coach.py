@@ -15,6 +15,12 @@ def set_coach(coach_engine):
     _coach_engine = coach_engine
 
 
+def get_stats() -> dict:
+    if _coach_engine is None:
+        return {"total_requests": 0}
+    return _coach_engine.stats()
+
+
 @router.post("/analyze", response_model=CoachResponse)
 async def analyze(request: CoachRequest):
     """Analyze the position after a move was played."""

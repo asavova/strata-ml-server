@@ -23,11 +23,19 @@ async def client():
 
 
 class FakeEvaluator:
+    def __init__(self):
+        self.eval_count = 0
+
     def evaluate(self, state, legal_mask):
+        self.eval_count += 1
         return 0.25, [1.0 / len(legal_mask)] * len(legal_mask)
 
     def evaluate_batch(self, states, legal_masks):
+        self.eval_count += len(states)
         return [(0.25, [1.0 / len(mask)] * len(mask)) for mask in legal_masks]
+
+    def stats(self):
+        return {"total_evaluations": self.eval_count}
 
 
 class FakeReplayBuffer:
@@ -59,6 +67,9 @@ class FakeTrainer:
 
 
 class FakeCoach:
+    def stats(self):
+        return {"total_requests": 0, "requests_by_type": {}, "llm_available": False}
+
     def analyze(self, **kwargs):
         return {"commentary": "Rule-based analysis.", "confidence": 0.75}
 
@@ -75,6 +86,8 @@ async def test_health(client):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
+    assert data["evaluation_stats"]["total_evaluations"] == 0
+    assert data["coach_stats"]["total_requests"] == 0
 
 
 @pytest.mark.asyncio

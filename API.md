@@ -8,7 +8,8 @@ primary caller, but the endpoints are deterministic and can be tested directly.
 `GET /health`
 
 Returns service status, selected device, model version, and any metadata loaded
-from the latest checkpoint.
+from the latest checkpoint. It also includes evaluator and coaching runtime
+statistics.
 
 ## Evaluation
 

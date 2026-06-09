@@ -15,6 +15,12 @@ def set_evaluator(evaluator):
     _evaluator = evaluator
 
 
+def get_stats() -> dict:
+    if _evaluator is None:
+        return {"total_evaluations": 0}
+    return _evaluator.stats()
+
+
 @router.post("", response_model=EvalResponse)
 async def evaluate_position(request: EvalRequest):
     """Evaluate a single board position."""
