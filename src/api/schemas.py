@@ -135,11 +135,12 @@ class TrainResponse(BaseModel):
 
 class TrainStatusResponse(BaseModel):
     step_count: int
-    best_loss: float
+    best_loss: Optional[float]
     recent_avg_loss: float
     lr: float
     buffer_size: int
     buffer_stats: dict
+    latest_checkpoint: Optional[dict] = None
 
 
 class CoordSchema(BaseModel):

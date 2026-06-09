@@ -7,7 +7,8 @@ primary caller, but the endpoints are deterministic and can be tested directly.
 
 `GET /health`
 
-Returns service status, selected device, and model version metadata.
+Returns service status, selected device, model version, and any metadata loaded
+from the latest checkpoint.
 
 ## Evaluation
 
@@ -104,7 +105,9 @@ only for that optimizer step.
 `GET /train/status`
 
 Returns step count, current learning rate, best loss, recent average loss, and
-replay buffer statistics.
+replay buffer statistics. When a checkpoint has been saved or loaded, the
+response also includes `latest_checkpoint` metadata with step, loss, best loss,
+and learning rate.
 
 ## Coaching
 

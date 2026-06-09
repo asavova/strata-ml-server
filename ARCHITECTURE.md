@@ -51,9 +51,11 @@ workflows.
 
 - Replay buffer entries live in memory, are capped by
   `training.max_replay_buffer`, and are saved to `paths.replay_buffer_snapshot`.
-- Model checkpoints are written to `paths.latest_model`.
+- Model checkpoints are written to `paths.latest_model` with training metadata.
 - The best observed checkpoint is written to `paths.best_model` when checkpoint
   loss improves.
+- Checkpoint metadata is exposed through `/health` and `/train/status` when
+  available.
 - Runtime directories are created during FastAPI lifespan startup.
 
 ## Docker And Evaluation

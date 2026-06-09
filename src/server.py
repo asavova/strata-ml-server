@@ -5,6 +5,7 @@ Wires together: network, trainer, evaluator, coach, API routes.
 """
 
 import logging
+import math
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -52,12 +53,14 @@ async def lifespan(app: FastAPI):
     ).to(device)
 
     # Load existing weights if available
-    network.load(config.paths.latest_model, device)
+    loaded_metadata = network.load(config.paths.latest_model, device)
+    app.state.model_metadata = loaded_metadata or {}
 
     # Initialize components
     replay_buffer = ReplayBuffer(max_size=config.training.max_replay_buffer)
     replay_buffer.load_snapshot(config.paths.replay_buffer_snapshot)
     trainer = Trainer(network, device, config.training, config.paths)
+    trainer.latest_checkpoint = app.state.model_metadata or None
     evaluator = Evaluator(network, device)
     coach_engine = CoachEngine(
         llm_model=config.coach.llm_model,
@@ -80,7 +83,20 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Saving final model checkpoint...")
-    network.save(config.paths.latest_model)
+    trainer_status = trainer.get_status()
+    final_metadata = {
+        "step": trainer_status["step_count"],
+        "loss": trainer.loss_history[-1] if trainer.loss_history else 0.0,
+        "best_loss": (
+            trainer_status["best_loss"]
+            if trainer_status["best_loss"] is not None
+            and math.isfinite(trainer_status["best_loss"])
+            else None
+        ),
+        "lr": trainer_status["lr"],
+    }
+    network.save(config.paths.latest_model, metadata=final_metadata)
+    app.state.model_metadata = final_metadata
     replay_buffer.save_snapshot(config.paths.replay_buffer_snapshot)
     logger.info("Server shut down cleanly.")
 
@@ -99,11 +115,13 @@ app = FastAPI(
 async def health():
     """Health check endpoint used by Java NeuralNetClient.connect()."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    metadata = getattr(app.state, "model_metadata", {})
     return {
         "status": "ok",
         "service": "strata-ml-server",
         "device": device,
         "model_version": "1.0",
+        "model_metadata": metadata,
     }
 
 

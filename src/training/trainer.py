@@ -3,6 +3,7 @@ Training loop for the Strata neural network.
 """
 
 import logging
+import math
 from pathlib import Path
 
 import torch
@@ -50,6 +51,7 @@ class Trainer:
         self.step_count = 0
         self.best_loss = float("inf")
         self.loss_history: list[float] = []
+        self.latest_checkpoint: dict | None = None
 
         logger.info(
             f"Trainer initialized: lr={config.learning_rate}, "
@@ -149,12 +151,25 @@ class Trainer:
 
     def _save_checkpoint(self, current_loss: float):
         """Save model checkpoint. Track best model separately."""
-        self.network.save(self.paths.latest_model)
+        metadata = self._checkpoint_metadata(current_loss)
+        self.network.save(self.paths.latest_model, metadata=metadata)
+        self.latest_checkpoint = metadata
 
         if current_loss < self.best_loss:
             self.best_loss = current_loss
-            self.network.save(self.paths.best_model)
+            best_metadata = self._checkpoint_metadata(current_loss)
+            self.network.save(self.paths.best_model, metadata=best_metadata)
+            self.latest_checkpoint = best_metadata
             logger.info(f"New best model saved (loss={current_loss:.4f})")
+
+    def _checkpoint_metadata(self, current_loss: float) -> dict:
+        best_loss = min(self.best_loss, current_loss)
+        return {
+            "step": self.step_count,
+            "loss": current_loss,
+            "best_loss": best_loss if math.isfinite(best_loss) else None,
+            "lr": self.scheduler.get_last_lr()[0],
+        }
 
     def get_status(self) -> dict:
         """Return training status summary."""
@@ -165,7 +180,8 @@ class Trainer:
         )
         return {
             "step_count": self.step_count,
-            "best_loss": self.best_loss,
+            "best_loss": self.best_loss if math.isfinite(self.best_loss) else None,
             "recent_avg_loss": recent_loss,
             "lr": self.scheduler.get_last_lr()[0] if self.step_count > 0 else self.config.learning_rate,
+            "latest_checkpoint": self.latest_checkpoint,
         }

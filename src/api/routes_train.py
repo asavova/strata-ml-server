@@ -74,4 +74,5 @@ async def training_status():
         lr=trainer_status["lr"],
         buffer_size=_replay_buffer.size(),
         buffer_stats=buffer_stats,
+        latest_checkpoint=trainer_status.get("latest_checkpoint"),
     )

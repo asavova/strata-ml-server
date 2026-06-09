@@ -58,7 +58,7 @@ def test_network_save_load(tmp_path):
 
     net2 = StrataNetwork(state_size=1008, hidden_size=64, num_residual_blocks=1)
     loaded = net2.load(path, torch.device("cpu"))
-    assert loaded is True
+    assert loaded == {}
 
     state = torch.randn(1, 1008)
     net1.eval()
@@ -67,3 +67,16 @@ def test_network_save_load(tmp_path):
     p2, v2 = net2(state)
     assert torch.allclose(p1, p2, atol=1e-6)
     assert torch.allclose(v1, v2, atol=1e-6)
+
+
+def test_network_save_load_with_metadata(tmp_path):
+    """Verify metadata checkpoint format remains loadable."""
+    net1 = StrataNetwork(state_size=1008, hidden_size=64, num_residual_blocks=1)
+    path = str(tmp_path / "metadata_model.pt")
+    metadata = {"step": 12, "loss": 0.5, "best_loss": 0.5, "lr": 0.001}
+    net1.save(path, metadata=metadata)
+
+    net2 = StrataNetwork(state_size=1008, hidden_size=64, num_residual_blocks=1)
+    loaded = net2.load(path, torch.device("cpu"))
+
+    assert loaded == metadata

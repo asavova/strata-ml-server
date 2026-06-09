@@ -8,6 +8,7 @@ Dual-headed architecture:
 
 import logging
 from pathlib import Path
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -94,19 +95,31 @@ class StrataNetwork(nn.Module):
 
         return policy, value
 
-    def save(self, path: str):
-        """Save model weights to disk."""
+    def save(self, path: str, metadata: dict[str, Any] | None = None):
+        """Save model weights and optional metadata to disk."""
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        torch.save(self.state_dict(), path)
+        if metadata is None:
+            torch.save(self.state_dict(), path)
+        else:
+            torch.save(
+                {
+                    "state_dict": self.state_dict(),
+                    "metadata": metadata,
+                },
+                path,
+            )
         logger.info(f"Model saved to {path}")
 
     def load(self, path: str, device: torch.device):
         """Load model weights from disk."""
         if Path(path).exists():
-            self.load_state_dict(
-                torch.load(path, map_location=device, weights_only=True)
-            )
+            checkpoint = torch.load(path, map_location=device, weights_only=True)
+            if isinstance(checkpoint, dict) and "state_dict" in checkpoint:
+                self.load_state_dict(checkpoint["state_dict"])
+                logger.info(f"Model loaded from {path}")
+                return checkpoint.get("metadata", {})
+            self.load_state_dict(checkpoint)
             logger.info(f"Model loaded from {path}")
-            return True
+            return {}
         logger.warning(f"No model found at {path}")
-        return False
+        return None

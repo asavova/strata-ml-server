@@ -54,6 +54,7 @@ class FakeTrainer:
             "best_loss": 0.0,
             "recent_avg_loss": 0.0,
             "lr": 0.001,
+            "latest_checkpoint": None,
         }
 
 

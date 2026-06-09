@@ -104,3 +104,31 @@ def test_training_step_uses_one_step_overrides(tmp_path):
     assert result["batch_size"] == 4
     assert result["lr"] == 0.005
     assert trainer.optimizer.param_groups[0]["lr"] == train_config.learning_rate
+
+
+def test_training_step_records_checkpoint_metadata(tmp_path):
+    net = StrataNetwork(state_size=1008, hidden_size=64, num_residual_blocks=1)
+    device = torch.device("cpu")
+
+    train_config = TrainingConfig(
+        batch_size=4,
+        min_buffer_for_training=4,
+        checkpoint_interval=1,
+    )
+    paths_config = PathsConfig(
+        latest_model=str(tmp_path / "latest.pt"),
+        best_model=str(tmp_path / "best.pt"),
+    )
+
+    trainer = Trainer(net, device, train_config, paths_config)
+    buf = ReplayBuffer(max_size=1000)
+    for _ in range(8):
+        buf.add(_make_example())
+
+    result = trainer.train_step(buf)
+    status = trainer.get_status()
+
+    assert result["success"] is True
+    assert status["latest_checkpoint"]["step"] == 1
+    assert status["latest_checkpoint"]["loss"] == result["loss"]
+    assert status["latest_checkpoint"]["best_loss"] == result["loss"]
