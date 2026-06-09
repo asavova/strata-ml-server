@@ -43,6 +43,8 @@ workflows.
 - Policy and legal-mask vectors are fixed at 126 by 126 possible moves.
 - Empty legal masks are rejected before network inference to avoid undefined
   softmax behavior.
+- The evaluator enforces the same shape and legal-mask invariants as the REST
+  schema so direct internal callers cannot bypass them.
 - Training values are constrained to the game outcome range `[-1.0, 1.0]`.
 - Rule-based coaching uses stable request-keyed selection rather than process
   randomness.
