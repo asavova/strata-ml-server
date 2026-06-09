@@ -5,7 +5,7 @@ Shared between all route modules.
 
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 STATE_SIZE = 1008
@@ -150,17 +150,18 @@ class CoordSchema(BaseModel):
 
 
 class LastMoveSchema(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     movedPiece: Optional[str] = None
     mover: Optional[str] = None
     isCapture: bool = False
     capturedPiece: Optional[str] = None
     newStage: Optional[str] = None
 
-    class Config:
-        extra = "allow"
-
 
 class PieceSchema(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     nodeId: int = Field(default=0, ge=0, lt=TOTAL_NODES)
     layer: int = Field(default=0, ge=0, lt=LAYERS)
     row: int = Field(default=0, ge=0, lt=ROWS)
@@ -178,11 +179,10 @@ class PieceSchema(BaseModel):
                 raise ValueError("nodeId must match layer, row, and col")
         return self
 
-    class Config:
-        extra = "allow"
-
 
 class CoachRequest(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     requestType: str = "ANALYZE"
     activePlayer: str = "WHITE"
     plyCount: int = 0
@@ -190,10 +190,7 @@ class CoachRequest(BaseModel):
     lastMove: Optional[LastMoveSchema] = None
     whitePieceCount: Optional[int] = 0
     blackPieceCount: Optional[int] = 0
-    pieces: list[PieceSchema] = []
-
-    class Config:
-        extra = "allow"
+    pieces: list[PieceSchema] = Field(default_factory=list)
 
 
 class CoachResponse(BaseModel):
