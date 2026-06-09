@@ -109,8 +109,3 @@ python -m pytest -q
 The test suite covers network shape behavior, legal-mask handling, evaluator
 batching, replay-buffer/trainer behavior, API validation, and deterministic
 coaching rules.
-
-## Future Task Planning
-
-See [TASK_OPPORTUNITIES.md](TASK_OPPORTUNITIES.md) for ranked future
-SWE-bench-style task candidates.
