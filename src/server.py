@@ -1,5 +1,5 @@
 """
-Strata ML Server — main application entry point.
+Strata ML Server - main application entry point.
 
 Wires together: network, trainer, evaluator, coach, API routes.
 """
@@ -22,7 +22,7 @@ from .coach import CoachEngine
 from .api import routes_eval, routes_train, routes_coach
 
 
-# ── Application state (initialized in lifespan) ───────────
+# Application state initialized in lifespan
 
 config = load_config()
 logger = setup_logging(config.paths.log_dir)
@@ -101,7 +101,7 @@ async def lifespan(app: FastAPI):
     logger.info("Server shut down cleanly.")
 
 
-# ── FastAPI application ───────────────────────────────────
+# FastAPI application
 
 app = FastAPI(
     title="Strata ML Server",
@@ -133,7 +133,7 @@ app.include_router(routes_train.router)
 app.include_router(routes_coach.router)
 
 
-# ── CLI entry point ───────────────────────────────────────
+# CLI entry point
 
 def main():
     uvicorn.run(

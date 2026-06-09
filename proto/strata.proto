@@ -5,9 +5,7 @@ package strata;
 option java_package = "com.strata.proto";
 option java_outer_classname = "StrataProto";
 
-// ──────────────────────────────────────────────
 // Core data types
-// ──────────────────────────────────────────────
 
 message BoardPosition {
   int32 node_id = 1;
@@ -43,9 +41,7 @@ message GameStateMsg {
   repeated int32 legal_move_to = 7;
 }
 
-// ──────────────────────────────────────────────
 // Neural network evaluation
-// ──────────────────────────────────────────────
 
 message EvalRequest {
   GameStateMsg state = 1;
@@ -56,9 +52,7 @@ message EvalResponse {
   repeated float move_policy = 2;     // probability for each legal move
 }
 
-// ──────────────────────────────────────────────
 // Self-play training
-// ──────────────────────────────────────────────
 
 message TrainingExample {
   GameStateMsg state = 1;
@@ -77,9 +71,7 @@ message TrainResponse {
   int32 examples_processed = 3;
 }
 
-// ──────────────────────────────────────────────
-// LLM Coaching
-// ──────────────────────────────────────────────
+// LLM coaching
 
 message CoachRequest {
   string request_type = 1;            // ANALYZE, SUGGEST, TEACH
@@ -95,9 +87,7 @@ message CoachResponse {
   float confidence = 4;
 }
 
-// ──────────────────────────────────────────────
 // Service definitions
-// ──────────────────────────────────────────────
 
 service StrataEvalService {
   // Single position evaluation
@@ -129,6 +119,7 @@ service StrataHealthService {
 }
 
 message PingRequest {}
+
 message PingResponse {
   string status = 1;
   string model_version = 2;

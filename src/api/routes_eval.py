@@ -6,7 +6,7 @@ from .schemas import EvalRequest, EvalResponse, BatchEvalRequest, BatchEvalRespo
 
 router = APIRouter(prefix="/evaluate", tags=["evaluation"])
 
-# Dependency injection — set by server.py at startup
+# Dependency injection set by server.py at startup
 _evaluator = None
 
 

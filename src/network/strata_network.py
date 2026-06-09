@@ -24,7 +24,7 @@ class StrataNetwork(nn.Module):
     """
     Neural network for position evaluation and move policy prediction.
 
-    Input:  flat float[1008] — 126 nodes * 8 channels
+    Input:  flat float[1008] - 126 nodes * 8 channels
     Output: (policy[15876], value scalar)
     """
 

@@ -12,7 +12,7 @@ from ..training.replay_buffer import TrainingExample
 
 router = APIRouter(prefix="/train", tags=["training"])
 
-# Dependency injection — set by server.py at startup
+# Dependency injection set by server.py at startup
 _trainer = None
 _replay_buffer = None
 _replay_snapshot_path = None

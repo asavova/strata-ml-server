@@ -1,5 +1,5 @@
 """
-Position evaluator — wraps the neural network for inference.
+Position evaluator - wraps the neural network for inference.
 """
 
 import logging

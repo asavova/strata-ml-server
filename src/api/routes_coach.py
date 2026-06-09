@@ -6,7 +6,7 @@ from .schemas import CoachRequest, CoachResponse
 
 router = APIRouter(prefix="/coach", tags=["coaching"])
 
-# Dependency injection — set by server.py at startup
+# Dependency injection set by server.py at startup
 _coach_engine = None
 
 
