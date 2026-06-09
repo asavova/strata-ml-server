@@ -80,6 +80,9 @@ Contract:
 - `examples` must be non-empty.
 - Each `state` must contain exactly 1008 floats.
 - Each `policy` must contain exactly 15876 floats.
+- Policy values must be non-negative and include at least one positive target.
+- Policy targets are normalized before entering the replay buffer, so callers may
+  send MCTS visit counts or probabilities.
 - `value` must be between -1.0 and 1.0.
 
 `POST /train/step`

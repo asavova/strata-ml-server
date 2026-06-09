@@ -30,6 +30,16 @@ def _ensure_legal_mask(values: list[float], field_name: str) -> list[float]:
     return values
 
 
+def _normalize_policy(values: list[float]) -> list[float]:
+    _ensure_length(values, POLICY_SIZE, "policy")
+    if any(value < 0 for value in values):
+        raise ValueError("policy cannot contain negative values")
+    total = sum(values)
+    if total <= 0:
+        raise ValueError("policy must contain at least one positive target")
+    return [value / total for value in values]
+
+
 class EvalRequest(BaseModel):
     state: list[float]
     legal_mask: list[float]
@@ -96,7 +106,7 @@ class TrainingExampleSchema(BaseModel):
     @field_validator("policy")
     @classmethod
     def validate_policy(cls, value: list[float]) -> list[float]:
-        return _ensure_length(value, POLICY_SIZE, "policy")
+        return _normalize_policy(value)
 
 
 class TrainingBatchRequest(BaseModel):

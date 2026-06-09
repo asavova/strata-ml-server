@@ -6,11 +6,15 @@ from httpx import AsyncClient, ASGITransport
 from src.server import app
 from src.api import routes_coach, routes_eval, routes_train
 
+fake_replay_buffer = None
+
 
 @pytest.fixture
 async def client():
+    global fake_replay_buffer
+    fake_replay_buffer = FakeReplayBuffer()
     routes_eval.set_evaluator(FakeEvaluator())
-    routes_train.set_dependencies(FakeTrainer(), FakeReplayBuffer())
+    routes_train.set_dependencies(FakeTrainer(), fake_replay_buffer)
     routes_coach.set_coach(FakeCoach())
 
     transport = ASGITransport(app=app)
@@ -88,11 +92,14 @@ async def test_evaluate(client):
 
 @pytest.mark.asyncio
 async def test_submit_training(client):
+    policy = [0.0] * 15876
+    policy[10] = 3.0
+    policy[20] = 1.0
     payload = {
         "examples": [
             {
                 "state": [0.5] * 1008,
-                "policy": [0.0] * 15876,
+                "policy": policy,
                 "value": 0.5,
             }
         ]
@@ -101,6 +108,8 @@ async def test_submit_training(client):
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
+    assert fake_replay_buffer.examples[0].policy[10] == 0.75
+    assert fake_replay_buffer.examples[0].policy[20] == 0.25
 
 
 @pytest.mark.asyncio
@@ -195,6 +204,39 @@ async def test_submit_training_rejects_bad_value(client):
                 "state": [0.5] * 1008,
                 "policy": [0.0] * 15876,
                 "value": 2.0,
+            }
+        ]
+    }
+    response = await client.post("/train/submit", json=payload)
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_submit_training_rejects_empty_policy(client):
+    payload = {
+        "examples": [
+            {
+                "state": [0.5] * 1008,
+                "policy": [0.0] * 15876,
+                "value": 0.5,
+            }
+        ]
+    }
+    response = await client.post("/train/submit", json=payload)
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_submit_training_rejects_negative_policy(client):
+    policy = [0.0] * 15876
+    policy[0] = 1.0
+    policy[1] = -0.5
+    payload = {
+        "examples": [
+            {
+                "state": [0.5] * 1008,
+                "policy": policy,
+                "value": 0.5,
             }
         ]
     }
