@@ -139,3 +139,6 @@ Without the key, the coach runs in **rule-based mode** — still functional, jus
 | `CoachClient.teach()` | `POST /coach/teach` | Strategic Q&A |
 
 Both repos share the same protocol via `strata.proto` and the JSON schemas. The Java engine drives the game and generates training data. The Python server trains the neural network and provides coaching.
+
+## License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
