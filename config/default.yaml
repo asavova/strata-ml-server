@@ -26,6 +26,7 @@ paths:
   log_dir: "logs"
   latest_model: "models/latest.pt"
   best_model: "models/best.pt"
+  training_checkpoint: "models/training_checkpoint.pt"
 
 coach:
   # Set to null to use rule-based coaching only

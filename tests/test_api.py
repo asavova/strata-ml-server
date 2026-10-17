@@ -1,9 +1,24 @@
 """Integration tests for the API endpoints."""
 
+import inspect
+
 import pytest
+import torch
 from httpx import AsyncClient, ASGITransport
 
+from src.api import routes_coach, routes_eval, routes_train
+from src.coach import CoachEngine
+from src.evaluation import Evaluator
+from src.network import StrataNetwork
 from src.server import app
+from src.training import ReplayBuffer
+
+
+def test_coach_handlers_run_in_threadpool():
+    """Synchronous coach work must not block the ASGI event loop."""
+    assert not inspect.iscoroutinefunction(routes_coach.analyze)
+    assert not inspect.iscoroutinefunction(routes_coach.suggest)
+    assert not inspect.iscoroutinefunction(routes_coach.teach)
 
 
 @pytest.fixture
@@ -22,7 +37,11 @@ async def test_health(client):
 
 
 @pytest.mark.asyncio
-async def test_evaluate(client):
+async def test_evaluate(client, monkeypatch):
+    network = StrataNetwork(state_size=1008, hidden_size=64, num_residual_blocks=1)
+    monkeypatch.setattr(
+        routes_eval, "_evaluator", Evaluator(network, torch.device("cpu"))
+    )
     payload = {
         "state": [0.0] * 1008,
         "legal_mask": [1.0] * 15876,
@@ -36,7 +55,8 @@ async def test_evaluate(client):
 
 
 @pytest.mark.asyncio
-async def test_submit_training(client):
+async def test_submit_training(client, monkeypatch):
+    monkeypatch.setattr(routes_train, "_replay_buffer", ReplayBuffer(max_size=100))
     payload = {
         "examples": [
             {
@@ -53,7 +73,8 @@ async def test_submit_training(client):
 
 
 @pytest.mark.asyncio
-async def test_coach_analyze(client):
+async def test_coach_analyze(client, monkeypatch):
+    monkeypatch.setattr(routes_coach, "_coach_engine", CoachEngine())
     payload = {
         "requestType": "ANALYZE",
         "activePlayer": "WHITE",

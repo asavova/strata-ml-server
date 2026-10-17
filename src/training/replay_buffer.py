@@ -66,3 +66,28 @@ class ReplayBuffer:
             "mean_value": float(np.mean(values)),
             "std_value": float(np.std(values)),
         }
+
+    def state_dict(self) -> dict:
+        """Return a serializable snapshot of the replay buffer."""
+        return {
+            "max_size": self.max_size,
+            "total_added": self.total_added,
+            "examples": [
+                {"state": ex.state, "policy": ex.policy, "value": ex.value}
+                for ex in self.buffer
+            ],
+        }
+
+    def load_state_dict(self, state: dict):
+        """Restore a replay-buffer snapshot, retaining the newest examples."""
+        examples = state["examples"]
+        self.buffer.clear()
+        self.buffer.extend(
+            TrainingExample(
+                state=example["state"],
+                policy=example["policy"],
+                value=example["value"],
+            )
+            for example in examples[-self.max_size:]
+        )
+        self.total_added = max(int(state["total_added"]), len(self.buffer))

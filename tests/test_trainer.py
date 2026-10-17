@@ -28,6 +28,12 @@ def test_replay_buffer():
     for _ in range(80):
         buf.add(_make_example())
     assert buf.size() == 100  # capped at max_size
+    state = buf.state_dict()
+    restored = ReplayBuffer(max_size=100)
+    restored.load_state_dict(state)
+    assert restored.size() == 100
+    assert restored.stats()["total_added"] == 130
+    assert restored.buffer[-1] == buf.buffer[-1]
 
 
 def test_training_step(tmp_path):
@@ -58,3 +64,47 @@ def test_training_step(tmp_path):
     result = trainer.train_step(buf)
     assert result["success"] is True
     assert result["loss"] > 0
+
+
+def test_training_checkpoint_restores_training_state_and_replay_buffer(tmp_path):
+    device = torch.device("cpu")
+    train_config = TrainingConfig(
+        batch_size=4,
+        min_buffer_for_training=4,
+        checkpoint_interval=999,
+    )
+    paths_config = PathsConfig(
+        latest_model=str(tmp_path / "latest.pt"),
+        best_model=str(tmp_path / "best.pt"),
+        training_checkpoint=str(tmp_path / "training.pt"),
+    )
+    network = StrataNetwork(state_size=1008, hidden_size=64, num_residual_blocks=1)
+    trainer = Trainer(network, device, train_config, paths_config)
+    replay_buffer = ReplayBuffer(max_size=10)
+    for _ in range(6):
+        replay_buffer.add(_make_example())
+
+    assert trainer.train_step(replay_buffer)["success"] is True
+    trainer.best_loss = 0.25
+    trainer.save_checkpoint(replay_buffer)
+    expected_weights = {
+        key: value.detach().clone()
+        for key, value in network.state_dict().items()
+    }
+
+    restored_network = StrataNetwork(
+        state_size=1008, hidden_size=64, num_residual_blocks=1
+    )
+    restored_trainer = Trainer(
+        restored_network, device, train_config, paths_config
+    )
+    restored_buffer = ReplayBuffer(max_size=10)
+    assert restored_trainer.load_checkpoint(restored_buffer) is True
+
+    assert restored_trainer.step_count == 1
+    assert restored_trainer.best_loss == 0.25
+    assert restored_trainer.optimizer.state
+    assert restored_buffer.size() == 6
+    assert restored_buffer.stats()["total_added"] == 6
+    for key, value in restored_network.state_dict().items():
+        assert torch.equal(value, expected_weights[key])

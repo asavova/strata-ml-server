@@ -16,7 +16,7 @@ def set_coach(coach_engine):
 
 
 @router.post("/analyze", response_model=CoachResponse)
-async def analyze(request: CoachRequest):
+def analyze(request: CoachRequest):
     """Analyze the position after a move was played."""
     last_move = request.lastMove.model_dump() if request.lastMove else None
     pieces = [p.model_dump() for p in request.pieces]
@@ -33,7 +33,7 @@ async def analyze(request: CoachRequest):
 
 
 @router.post("/suggest", response_model=CoachResponse)
-async def suggest(request: CoachRequest):
+def suggest(request: CoachRequest):
     """Suggest strategic direction."""
     pieces = [p.model_dump() for p in request.pieces]
 
@@ -48,7 +48,7 @@ async def suggest(request: CoachRequest):
 
 
 @router.post("/teach", response_model=CoachResponse)
-async def teach(request: CoachRequest):
+def teach(request: CoachRequest):
     """Respond to a teaching request."""
     pieces = [p.model_dump() for p in request.pieces]
 

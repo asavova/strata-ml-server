@@ -45,6 +45,7 @@ class PathsConfig(BaseModel):
     log_dir: str = "logs"
     latest_model: str = "models/latest.pt"
     best_model: str = "models/best.pt"
+    training_checkpoint: str = "models/training_checkpoint.pt"
 
 
 class CoachConfig(BaseModel):

@@ -52,11 +52,12 @@ async def lifespan(app: FastAPI):
     ).to(device)
 
     # Load existing weights if available
-    network.load(config.paths.latest_model, device)
-
     # Initialize components
     replay_buffer = ReplayBuffer(max_size=config.training.max_replay_buffer)
     trainer = Trainer(network, device, config.training, config.paths)
+    if not trainer.load_checkpoint(replay_buffer):
+        network.load(config.paths.latest_model, device)
+
     evaluator = Evaluator(network, device)
     coach_engine = CoachEngine(
         llm_model=config.coach.llm_model,
@@ -76,6 +77,7 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Saving final model checkpoint...")
     network.save(config.paths.latest_model)
+    trainer.save_checkpoint(replay_buffer)
     logger.info("Server shut down cleanly.")
 
 
