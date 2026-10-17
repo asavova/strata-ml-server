@@ -3,7 +3,10 @@ Training loop for the Strata neural network.
 """
 
 import logging
+import os
 from pathlib import Path
+import random
+import tempfile
 
 import torch
 import torch.nn.functional as F
@@ -16,6 +19,8 @@ from .replay_buffer import ReplayBuffer
 from .data_loader import examples_to_tensors
 
 logger = logging.getLogger("strata.training")
+
+CHECKPOINT_VERSION = 1
 
 
 class Trainer:
@@ -104,10 +109,11 @@ class Trainer:
         self.step_count += 1
         loss_val = total_loss.item()
         self.loss_history.append(loss_val)
+        self.loss_history = self.loss_history[-100:]
 
         # Checkpoint
         if self.step_count % self.config.checkpoint_interval == 0:
-            self._save_checkpoint(loss_val)
+            self._save_checkpoint(loss_val, replay_buffer)
 
         logger.info(
             f"Step {self.step_count}: "
@@ -127,14 +133,86 @@ class Trainer:
             "buffer_size": replay_buffer.size(),
         }
 
-    def _save_checkpoint(self, current_loss: float):
-        """Save model checkpoint. Track best model separately."""
+    def _save_checkpoint(self, current_loss: float, replay_buffer: ReplayBuffer):
+        """Save the latest training state and track the best model separately."""
         self.network.save(self.paths.latest_model)
 
         if current_loss < self.best_loss:
             self.best_loss = current_loss
             self.network.save(self.paths.best_model)
             logger.info(f"New best model saved (loss={current_loss:.4f})")
+
+        self.save_checkpoint(replay_buffer)
+
+    def save_checkpoint(self, replay_buffer: ReplayBuffer):
+        """Atomically persist everything required to resume training."""
+        checkpoint_path = Path(self.paths.training_checkpoint)
+        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+
+        checkpoint = {
+            "version": CHECKPOINT_VERSION,
+            "model": self.network.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+            "scheduler": self.scheduler.state_dict(),
+            "step_count": self.step_count,
+            "best_loss": self.best_loss,
+            "loss_history": self.loss_history[-100:],
+            "replay_buffer": replay_buffer.state_dict(),
+            "python_rng_state": random.getstate(),
+            "torch_rng_state": torch.get_rng_state(),
+            "cuda_rng_state": torch.cuda.get_rng_state_all()
+            if torch.cuda.is_available()
+            else None,
+        }
+
+        descriptor, temporary_path = tempfile.mkstemp(
+            prefix=f".{checkpoint_path.name}.",
+            suffix=".tmp",
+            dir=checkpoint_path.parent,
+        )
+        os.close(descriptor)
+        try:
+            torch.save(checkpoint, temporary_path)
+            os.replace(temporary_path, checkpoint_path)
+        finally:
+            if os.path.exists(temporary_path):
+                os.unlink(temporary_path)
+
+        logger.info(f"Training checkpoint saved to {checkpoint_path}")
+
+    def load_checkpoint(self, replay_buffer: ReplayBuffer) -> bool:
+        """Restore a full training checkpoint, if one is available."""
+        checkpoint_path = Path(self.paths.training_checkpoint)
+        if not checkpoint_path.exists():
+            logger.info(f"No training checkpoint found at {checkpoint_path}")
+            return False
+
+        checkpoint = torch.load(
+            checkpoint_path, map_location="cpu", weights_only=True
+        )
+        if checkpoint.get("version") != CHECKPOINT_VERSION:
+            raise ValueError(
+                f"Unsupported training checkpoint version: "
+                f"{checkpoint.get('version')}"
+            )
+
+        self.network.load_state_dict(checkpoint["model"])
+        self.optimizer.load_state_dict(checkpoint["optimizer"])
+        self.scheduler.load_state_dict(checkpoint["scheduler"])
+        self.step_count = int(checkpoint["step_count"])
+        self.best_loss = float(checkpoint["best_loss"])
+        self.loss_history = list(checkpoint["loss_history"])[-100:]
+        replay_buffer.load_state_dict(checkpoint["replay_buffer"])
+        random.setstate(checkpoint["python_rng_state"])
+        torch.set_rng_state(checkpoint["torch_rng_state"])
+        if checkpoint["cuda_rng_state"] is not None and torch.cuda.is_available():
+            torch.cuda.set_rng_state_all(checkpoint["cuda_rng_state"])
+
+        logger.info(
+            f"Training checkpoint restored from {checkpoint_path} "
+            f"at step {self.step_count} with {replay_buffer.size()} examples"
+        )
+        return True
 
     def get_status(self) -> dict:
         """Return training status summary."""
